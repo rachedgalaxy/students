@@ -366,6 +366,34 @@ const StudentManagement: React.FC = () => {
                   <ChevronDown className="absolute left-3 top-2.5 text-slate-400 pointer-events-none" size={14} />
                 </div>
               </div>
+
+              {/* Gender Selection */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-500 pr-1 uppercase tracking-widest">تحديد الجنس</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewStudent({ ...newStudent, gender: 'male' })}
+                    className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-all ${newStudent.gender === 'male'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                      }`}
+                  >
+                    ذكر 👦
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewStudent({ ...newStudent, gender: 'female' })}
+                    className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-all ${newStudent.gender === 'female'
+                        ? 'bg-pink-500 text-white shadow-md'
+                        : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                      }`}
+                  >
+                    أنثى 👧
+                  </button>
+                </div>
+              </div>
+
               <div className="pt-2 flex flex-col gap-2">
                 <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-xl font-black text-[11px] shadow-lg active:scale-95 transition-all">حفظ التلميذ في القائمة</button>
                 <button type="button" onClick={() => setIsAdding(false)} className="w-full py-2 text-slate-400 font-black text-[10px]">إلغاء</button>

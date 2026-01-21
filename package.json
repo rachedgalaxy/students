@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://rachedgalaxy.github.io/students/",
+  "homepage": "https://gg.redeem-dz.com/",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -12,7 +12,10 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.562.0",
+    "lz-string": "^1.5.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "recharts": "^3.6.0",

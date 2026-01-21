@@ -164,7 +164,7 @@ const AttendanceHistory: React.FC = () => {
                 <span>توقيع الأستاذ: .................</span>
                 <span>توقيع المدير(ة): ..........................</span>
             </div>
-            <div class="page-number">صفحة ${pageIndex + 1} من ${studentChunks.length}</div>
+            <div class="print-footer"></div>
         </div>
     `).join('');
 
@@ -178,6 +178,21 @@ const AttendanceHistory: React.FC = () => {
           <title>سجل المناداة</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
+            
+            @page {
+              size: A4;
+              margin: 0mm;
+            }
+            
+            @media print {
+              @page { 
+                margin: 0mm;
+              }
+              html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+              }
+            }
             body { font-family: 'Cairo', sans-serif; margin: 0; background: white; }
             .print-page { padding: 8mm 10mm; page-break-after: always; min-height: 297mm; position: relative; box-sizing: border-box; }
             .header { text-align: center; margin-bottom: 8px; }
@@ -340,8 +355,8 @@ const AttendanceHistory: React.FC = () => {
                                   setVisibleDateId(visibleDateId === record.id ? null : record.id);
                                 }}
                                 className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] text-white font-black shadow-sm transition-transform active:scale-95 ${record.status === 'present' ? 'bg-emerald-500' :
-                                    record.status === 'pe_kit' ? 'bg-indigo-500' :
-                                      record.status === 'justified' ? 'bg-amber-500' : 'bg-rose-500'
+                                  record.status === 'pe_kit' ? 'bg-indigo-500' :
+                                    record.status === 'justified' ? 'bg-amber-500' : 'bg-rose-500'
                                   }`}
                               >
                                 {getStatusLetter(record.status)}

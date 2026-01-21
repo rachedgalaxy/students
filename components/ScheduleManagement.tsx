@@ -211,10 +211,20 @@ const ScheduleManagement: React.FC = () => {
         <title>جدول التوقيت الأسبوعي - المخصص</title>
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
-          @page { size: A4 landscape; margin: 10mm; }
-          body { font-family: 'Cairo', sans-serif; margin: 0; padding: 5mm; color: #000; background: #fff; line-height: 1.2; font-size: 11px; }
-          .header { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 10px; font-weight: 700; border-bottom: 1.5px solid #000; padding-bottom: 5px; }
-          .title { text-align: center; font-size: 18px; font-weight: 900; margin: 10px 0; text-decoration: underline; }
+          @page { 
+            size: A4 landscape; 
+            margin: 8mm; 
+          }
+          
+          @media print {
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+          }
+          body { font-family: 'Cairo', sans-serif; margin: 0; padding: 3mm; color: #000; background: #fff; line-height: 1.2; font-size: 11px; }
+          .header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 10px; font-weight: 700; border-bottom: 1.5px solid #000; padding-bottom: 4px; }
+          .title { text-align: center; font-size: 18px; font-weight: 900; margin: 8px 0; text-decoration: underline; }
           table { width: 100%; border-collapse: collapse; margin-top: 5px; border: 2px solid #000; }
           th, td { border: 1px solid #000; padding: 6px 4px; text-align: center; font-size: 11px; }
           th { background: #f0f0f0 !important; font-weight: 900; font-size: 12px; }
