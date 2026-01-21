@@ -8,14 +8,18 @@ const AttendanceHistory: React.FC = () => {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filterClass, setFilterClass] = useState('all');
   const [filterDateStart, setFilterDateStart] = useState('');
   const [filterDateEnd, setFilterDateEnd] = useState('');
+  const [visibleDateId, setVisibleDateId] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
+    const closePopover = () => setVisibleDateId(null);
+    document.addEventListener('click', closePopover);
+    return () => document.removeEventListener('click', closePopover);
   }, []);
 
   const loadData = () => {
@@ -32,7 +36,7 @@ const AttendanceHistory: React.FC = () => {
   };
 
   const getStatusLetter = (status: AttendanceStatus) => {
-    switch(status) {
+    switch (status) {
       case 'present': return 'ح';
       case 'pe_kit': return 'أ';
       case 'justified': return 'ب';
@@ -46,13 +50,13 @@ const AttendanceHistory: React.FC = () => {
       let matchesDate = true;
       if (filterDateStart && record.date < filterDateStart) matchesDate = false;
       if (filterDateEnd && record.date > filterDateEnd) matchesDate = false;
-      
-      const student = students.find(s => s.id === record.studentId);
+
+      const student = students.find(s => s.uid === record.studentUid);
       if (!student) return false;
-      
+
       const matchesClass = filterClass === 'all' || student.classId === filterClass;
       const matchesSearch = searchTerm === '' || student.name.includes(searchTerm) || student.id.includes(searchTerm);
-      
+
       return matchesDate && matchesClass && matchesSearch;
     });
   }, [attendance, students, filterDateStart, filterDateEnd, filterClass, searchTerm]);
@@ -69,19 +73,19 @@ const AttendanceHistory: React.FC = () => {
   const groupedData = useMemo(() => {
     const groups: Record<string, AttendanceRecord[]> = {};
     filteredAttendance.forEach(record => {
-      if (!groups[record.studentId]) groups[record.studentId] = [];
-      groups[record.studentId].push(record);
+      if (!groups[record.studentUid]) groups[record.studentUid] = [];
+      groups[record.studentUid].push(record);
     });
 
     return students
       .filter(student => {
         const matchesClass = filterClass === 'all' || student.classId === filterClass;
         const matchesSearch = searchTerm === '' || student.name.includes(searchTerm) || student.id.includes(searchTerm);
-        return matchesClass && matchesSearch && (groups[student.id] || searchTerm !== '');
+        return matchesClass && matchesSearch && (groups[student.uid] || searchTerm !== '');
       })
       .map(student => ({
         ...student,
-        records: (groups[student.id] || []).sort((a, b) => b.date.localeCompare(a.date)),
+        records: (groups[student.uid] || []).sort((a, b) => b.date.localeCompare(a.date)),
         className: classes.find(c => c.id === student.classId)?.name || 'قسم غير معروف',
         schoolName: classes.find(c => c.id === student.classId)?.schoolName || '',
         teacherName: classes.find(c => c.id === student.classId)?.teacherName || '..........................'
@@ -99,7 +103,6 @@ const AttendanceHistory: React.FC = () => {
     const currentProvince = currentClass?.province || '..........................';
 
     const studentChunks = [];
-    // Increase density to fit more students (approx 48 students)
     for (let i = 0; i < groupedData.length; i += 48) {
       studentChunks.push(groupedData.slice(i, i + 48));
     }
@@ -121,6 +124,7 @@ const AttendanceHistory: React.FC = () => {
             <table>
                 <thead>
                     <tr>
+                        <th style="width: 30px">#</th>
                         <th class="student-name-col">الاسم واللقب</th>
                         ${uniqueDates.map(date => `<th>${date.split('-').slice(1).reverse().join('/')}</th>`).join('')}
                     </tr>
@@ -128,21 +132,22 @@ const AttendanceHistory: React.FC = () => {
                 <tbody>
                     ${chunk.map(student => `
                         <tr>
+                            <td>${student.id}</td>
                             <td class="student-name-col">${student.name}</td>
                             ${uniqueDates.map(date => {
-                                const record = student.records.find(r => r.date === date);
-                                const letter = record ? getStatusLetter(record.status) : '';
-                                
-                                let statusClass = '';
-                                if (record) {
-                                  if (record.status === 'present') statusClass = 'status-h';
-                                  else if (record.status === 'pe_kit') statusClass = 'status-a';
-                                  else if (record.status === 'justified') statusClass = 'status-b';
-                                  else if (record.status === 'absent') statusClass = 'status-j';
-                                }
-                                
-                                return `<td><div class="status-cell ${statusClass}">${letter}</div></td>`;
-                            }).join('')}
+      const record = student.records.find(r => r.date === date);
+      const letter = record ? getStatusLetter(record.status) : '';
+
+      let statusClass = '';
+      if (record) {
+        if (record.status === 'present') statusClass = 'status-h';
+        else if (record.status === 'pe_kit') statusClass = 'status-a';
+        else if (record.status === 'justified') statusClass = 'status-b';
+        else if (record.status === 'absent') statusClass = 'status-j';
+      }
+
+      return `<td><div class="status-cell ${statusClass}">${letter}</div></td>`;
+    }).join('')}
                         </tr>
                     `).join('')}
                 </tbody>
@@ -159,86 +164,46 @@ const AttendanceHistory: React.FC = () => {
                 <span>توقيع الأستاذ: .................</span>
                 <span>توقيع المدير(ة): ..........................</span>
             </div>
-            
             <div class="page-number">صفحة ${pageIndex + 1} من ${studentChunks.length}</div>
         </div>
     `).join('');
 
-    let htmlContent = `
-    <!DOCTYPE html>
-    <html lang="ar" dir="rtl">
-    <head>
-        <meta charset="UTF-8">
-        <title>سجل المناداة - ${currentClassName}</title>
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
-            
-            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            
-            body { font-family: 'Cairo', sans-serif; padding: 0; margin: 0; color: #000; background: white; }
-            .print-page { padding: 8mm 10mm; page-break-after: always; min-height: 297mm; position: relative; box-sizing: border-box; background: white; }
-            
-            .header { text-align: center; margin-bottom: 8px; }
-            .official-top { margin-bottom: 8px; font-weight: 900; font-size: 11px; text-align: center; }
-            .ministry { margin-bottom: 2px; }
-            
-            .info-row { display: flex; justify-content: space-between; font-size: 9px; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 4px 0; margin-bottom: 10px; }
-            .report-title { font-size: 16px; font-weight: 900; margin: 5px 0; color: #000; text-align: center; }
-            
-            table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1.2px solid #000; }
-            th, td { border: 1px solid #000; text-align: center; padding: 2px 1px; font-size: 8px; overflow: hidden; vertical-align: middle; }
-            th { background-color: #f1f5f9 !important; font-weight: 900; color: #000; }
-            .student-name-col { width: 140px; text-align: right; padding-right: 5px; font-weight: bold; font-size: 9px; color: #000; }
-            
-            .status-cell { 
-              display: inline-flex; 
-              align-items: center; 
-              justify-content: center; 
-              width: 15px; 
-              height: 15px; 
-              border-radius: 2px; 
-              font-weight: 900; 
-              color: white !important; 
-              font-size: 9px; 
-              -webkit-print-color-adjust: exact !important;
-            }
-            
-            .status-h { background-color: #10b981 !important; }
-            .status-a { background-color: #3b82f6 !important; }
-            .status-b { background-color: #f59e0b !important; }
-            .status-j { background-color: #ef4444 !important; }
-            
-            .footer-info { margin-top: 20px; display: flex; justify-content: space-between; font-weight: bold; font-size: 11px; color: #000; }
-            .legend { margin-top: 15px; display: flex; gap: 15px; justify-content: center; padding: 5px; background: #f8fafc; border-radius: 6px; font-size: 9px; border: 1px solid #e2e8f0; }
-            .legend-item { display: flex; align-items: center; gap: 4px; font-weight: 700; }
-            .page-number { position: absolute; bottom: 5mm; left: 0; right: 0; text-align: center; font-size: 9px; color: #94a3b8; }
-            
-            @media print { 
-                .no-print { display: none !important; } 
-                body { padding: 0; }
-                .print-page { border: none; box-shadow: none; margin: 0; }
-                th { background-color: #f1f5f9 !important; }
-                /* Force colors */
-                .status-h { background-color: #10b981 !important; color: white !important; }
-                .status-a { background-color: #3b82f6 !important; color: white !important; }
-                .status-b { background-color: #f59e0b !important; color: white !important; }
-                .status-j { background-color: #ef4444 !important; color: white !important; }
-            }
-        </style>
-    </head>
-    <body>
-        ${pagesHtml}
-        <div class="no-print" style="position: fixed; bottom: 30px; left: 30px; display: flex; gap: 10px; z-index: 9999;">
-            <button onclick="window.print()" style="padding:14px 28px; background:#1e293b; color:#fff; border:none; cursor:pointer; font-family:Cairo; font-weight:900; border-radius:12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">إصدار أمر الطباعة</button>
-            <button onclick="window.close()" style="padding:14px 28px; background:#f1f5f9; color:#475569; border:none; cursor:pointer; font-family:Cairo; font-weight:900; border-radius:12px;">إغلاق المعاينة</button>
-        </div>
-    </body>
-    </html>
-    `;
-
     const printWindow = window.open('', '_blank');
     if (printWindow) {
-      printWindow.document.write(htmlContent);
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="ar" dir="rtl">
+        <head>
+          <meta charset="UTF-8">
+          <title>سجل المناداة</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
+            body { font-family: 'Cairo', sans-serif; margin: 0; background: white; }
+            .print-page { padding: 8mm 10mm; page-break-after: always; min-height: 297mm; position: relative; box-sizing: border-box; }
+            .header { text-align: center; margin-bottom: 8px; }
+            .info-row { display: flex; justify-content: space-between; font-size: 9px; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 4px 0; margin: 10px 0; }
+            table { width: 100%; border-collapse: collapse; border: 1.2px solid #000; }
+            th, td { border: 1px solid #000; text-align: center; padding: 4px 2px; font-size: 9px; }
+            th { background: #f1f5f9 !important; font-weight: 900; }
+            .student-name-col { text-align: right; padding-right: 5px; font-weight: bold; width: 150px; }
+            .status-cell { width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; border-radius: 2px; color: white !important; font-weight: 900; -webkit-print-color-adjust: exact; }
+            .status-h { background: #10b981 !important; }
+            .status-a { background: #3b82f6 !important; }
+            .status-b { background: #f59e0b !important; }
+            .status-j { background: #ef4444 !important; }
+            .legend { margin-top: 15px; display: flex; gap: 15px; justify-content: center; font-size: 9px; }
+            .footer-info { margin-top: 30px; display: flex; justify-content: space-between; font-weight: bold; }
+            @media print { .no-print { display: none; } }
+          </style>
+        </head>
+        <body>
+          ${pagesHtml}
+          <div class="no-print" style="position:fixed;bottom:20px;left:20px;">
+            <button onclick="window.print()" style="padding:10px 20px;background:#000;color:#fff;border:none;border-radius:8px;font-family:Cairo;cursor:pointer;">طباعة</button>
+          </div>
+        </body>
+        </html>
+      `);
       printWindow.document.close();
     }
   };
@@ -256,7 +221,7 @@ const AttendanceHistory: React.FC = () => {
               <p className="text-[8px] text-slate-400 font-bold uppercase">إدارة الأرشيف والبحث</p>
             </div>
           </div>
-          
+
           <div className="flex flex-wrap justify-center gap-1.5">
             {[
               { label: 'ح', value: summaryStats.h, color: 'text-emerald-600', bg: 'bg-emerald-50' },
@@ -275,15 +240,15 @@ const AttendanceHistory: React.FC = () => {
           <div className="flex flex-col md:flex-row gap-2">
             <div className="flex-1 relative">
               <Search className="absolute right-3 top-2.5 text-slate-400" size={14} />
-              <input 
-                type="text" 
-                placeholder="ابحث بالاسم أو الرقم التعريف..." 
+              <input
+                type="text"
+                placeholder="ابحث بـ # أو بالاسم..."
                 className="w-full pr-10 pl-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold text-xs text-slate-900 focus:ring-2 focus:ring-indigo-100 transition-all"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
             </div>
-            <select 
+            <select
               className="w-full md:w-72 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-black text-xs text-slate-900 outline-none focus:ring-2 focus:ring-indigo-100 transition-all appearance-none cursor-pointer"
               value={filterClass}
               onChange={e => setFilterClass(e.target.value)}
@@ -297,33 +262,33 @@ const AttendanceHistory: React.FC = () => {
             <div className="flex flex-1 gap-2">
               <div className="flex-1 flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2">
                 <span className="text-[9px] font-black text-slate-400 ml-2 whitespace-nowrap">من تاريخ:</span>
-                <input 
-                  type="date" 
-                  className="w-full bg-transparent py-1.5 font-bold text-[10px] text-slate-900 outline-none" 
-                  value={filterDateStart} 
-                  onChange={e => setFilterDateStart(e.target.value)} 
+                <input
+                  type="date"
+                  className="w-full bg-transparent py-1.5 font-bold text-[10px] text-slate-900 outline-none"
+                  value={filterDateStart}
+                  onChange={e => setFilterDateStart(e.target.value)}
                 />
               </div>
               <div className="flex-1 flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2">
                 <span className="text-[9px] font-black text-slate-400 ml-2 whitespace-nowrap">إلى تاريخ:</span>
-                <input 
-                  type="date" 
-                  className="w-full bg-transparent py-1.5 font-bold text-[10px] text-slate-900 outline-none" 
-                  value={filterDateEnd} 
-                  onChange={e => setFilterDateEnd(e.target.value)} 
+                <input
+                  type="date"
+                  className="w-full bg-transparent py-1.5 font-bold text-[10px] text-slate-900 outline-none"
+                  value={filterDateEnd}
+                  onChange={e => setFilterDateEnd(e.target.value)}
                 />
               </div>
             </div>
             <div className="flex gap-2">
-              <button 
-                onClick={resetFilters} 
+              <button
+                onClick={resetFilters}
                 className="bg-slate-100 px-4 py-2 rounded-xl text-slate-500 hover:bg-slate-200 transition-all shadow-sm flex items-center justify-center"
                 title="إعادة تعيين الفلاتر"
               >
                 <RotateCcw size={16} />
               </button>
-              <button 
-                onClick={generatePrintableHTML} 
+              <button
+                onClick={generatePrintableHTML}
                 className="flex-1 md:w-40 bg-slate-900 text-white px-6 py-2 rounded-xl font-black text-[10px] flex items-center justify-center gap-1.5 shadow-md hover:bg-black transition-all"
               >
                 <FileCode size={14} /> طباعة السجل
@@ -338,60 +303,65 @@ const AttendanceHistory: React.FC = () => {
           <table className="w-full text-right border-collapse min-w-[600px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">تلميذ الفوج</th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">آخر النشاطات (ح، أ، ب، ج)</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest w-16 text-center">#</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">التلميذ</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">آخر النشاطات</th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">نسبة الحضور</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {groupedData.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center gap-2 opacity-20">
-                      <Users size={48} />
-                      <p className="font-black text-sm">لا توجد بيانات</p>
-                    </div>
-                  </td>
+                  <td colSpan={4} className="px-6 py-12 text-center text-slate-300 font-black">لا توجد بيانات</td>
                 </tr>
               ) : (
                 groupedData.map((student) => {
                   const presenceCount = student.records.filter(r => r.status === 'present' || r.status === 'pe_kit').length;
                   const total = student.records.length;
                   const percentage = total > 0 ? Math.round((presenceCount / total) * 100) : 0;
-                  
+
                   return (
-                    <tr key={student.id} className="hover:bg-slate-50/50 transition-all group">
+                    <tr key={student.uid} className="hover:bg-slate-50/50 transition-all group">
+                      <td className="px-6 py-3.5 text-center font-black text-slate-400 text-xs">{student.id}</td>
                       <td className="px-6 py-3.5">
                         <p className="font-black text-slate-900 text-sm">{student.name}</p>
-                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">ID: {student.id}</p>
+                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{student.className}</p>
                       </td>
                       <td className="px-6 py-3.5">
-                        <div className="flex justify-center gap-1 flex-wrap">
-                          {student.records.slice(0, 10).map((record) => (
-                            <div 
+                        <div className="flex justify-center gap-1 flex-wrap relative">
+                          {student.records.slice(0, 8).map((record) => (
+                            <div
                               key={record.id}
-                              title={`${record.date}: ${STATUS_LABELS[record.status]}`}
-                              className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] text-white font-black shadow-sm transform hover:scale-110 transition-transform cursor-help ${
-                                record.status === 'present' ? 'bg-emerald-500' : 
-                                record.status === 'pe_kit' ? 'bg-indigo-500' : 
-                                record.status === 'justified' ? 'bg-amber-500' : 'bg-rose-500'
-                              }`}
+                              className="relative"
                             >
-                              {getStatusLetter(record.status)}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setVisibleDateId(visibleDateId === record.id ? null : record.id);
+                                }}
+                                className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] text-white font-black shadow-sm transition-transform active:scale-95 ${record.status === 'present' ? 'bg-emerald-500' :
+                                    record.status === 'pe_kit' ? 'bg-indigo-500' :
+                                      record.status === 'justified' ? 'bg-amber-500' : 'bg-rose-500'
+                                  }`}
+                              >
+                                {getStatusLetter(record.status)}
+                              </button>
+
+                              {visibleDateId === record.id && (
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-50 animate-in fade-in zoom-in-95 duration-200">
+                                  <div className="bg-slate-900 text-white text-[9px] font-black py-1 px-2 rounded-lg shadow-lg whitespace-nowrap relative">
+                                    {record.date.split('-').reverse().join('/')}
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-slate-900"></div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           ))}
-                          {student.records.length > 10 && <span className="text-[9px] font-bold text-slate-300 self-center">+</span>}
                         </div>
                       </td>
                       <td className="px-6 py-3.5 text-center">
                         <div className="flex flex-col items-center">
-                          <div className="w-12 h-1 bg-slate-100 rounded-full mb-1 overflow-hidden">
-                             <div 
-                              className={`h-full transition-all duration-1000 ${percentage > 80 ? 'bg-emerald-500' : percentage > 50 ? 'bg-amber-500' : 'bg-rose-500'}`}
-                              style={{ width: `${percentage}%` }}
-                             />
-                          </div>
-                          <span className={`text-[10px] font-black ${percentage > 80 ? 'text-emerald-600' : percentage > 50 ? 'text-amber-600' : 'text-rose-600'}`}>
+                          <span className={`text-[11px] font-black ${percentage > 80 ? 'text-emerald-600' : percentage > 50 ? 'text-amber-600' : 'text-rose-600'}`}>
                             {percentage}%
                           </span>
                         </div>

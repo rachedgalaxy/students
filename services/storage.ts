@@ -9,13 +9,29 @@ const KEYS = {
   LAST_IMPORT: 'ams_v3_last_import',
 };
 
-const DEFAULT_DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس"];
+// توليد معرف فريد بسيط
+const generateUid = () => Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
 
 export const storage = {
   getStudents: (): Student[] => {
     try {
       const data = localStorage.getItem(KEYS.STUDENTS);
-      return data ? JSON.parse(data) : [];
+      const students: any[] = data ? JSON.parse(data) : [];
+      
+      // ترقية البيانات القديمة التي لا تحتوي على uid
+      let needsUpdate = false;
+      const upgraded = students.map(s => {
+        if (!s.uid) {
+          needsUpdate = true;
+          return { ...s, uid: s.id || generateUid() };
+        }
+        return s;
+      });
+
+      if (needsUpdate) {
+        storage.saveStudents(upgraded);
+      }
+      return upgraded;
     } catch (e) { return []; }
   },
   
@@ -26,15 +42,35 @@ export const storage = {
   getClasses: (): Class[] => {
     try {
       const data = localStorage.getItem(KEYS.CLASSES);
-      if (data) return JSON.parse(data);
+      if (data) {
+        const parsed = JSON.parse(data);
+        return parsed.map((c: any) => {
+          if (!c.sessions) {
+            return { ...c, sessions: [] };
+          }
+          return c;
+        });
+      }
       
       const isInitialized = localStorage.getItem(KEYS.INITIALIZED);
       if (isInitialized === 'true') return [];
     } catch (e) {}
     
     return [
-      { id: 'c1', name: 'القسم الأول', schoolName: 'مدرسة النجاح الابتدائية', teacherName: '..........................', startTime: '08:00', endTime: '12:00', days: DEFAULT_DAYS },
-      { id: 'c2', name: 'القسم الثاني', schoolName: 'مدرسة النجاح الابتدائية', teacherName: '..........................', startTime: '13:00', endTime: '17:00', days: DEFAULT_DAYS }
+      { 
+        id: 'c1', 
+        name: 'القسم الأول', 
+        schoolName: 'مدرسة النجاح الابتدائية', 
+        teacherName: '..........................', 
+        sessions: [] 
+      },
+      { 
+        id: 'c2', 
+        name: 'القسم الثاني', 
+        schoolName: 'مدرسة النجاح الابتدائية', 
+        teacherName: '..........................', 
+        sessions: [] 
+      }
     ];
   },
   
@@ -46,7 +82,22 @@ export const storage = {
   getAttendance: (): AttendanceRecord[] => {
     try {
       const data = localStorage.getItem(KEYS.ATTENDANCE);
-      return data ? JSON.parse(data) : [];
+      const records: any[] = data ? JSON.parse(data) : [];
+      
+      // ترقية السجلات القديمة لتربط عبر studentUid
+      let needsUpdate = false;
+      const upgraded = records.map(r => {
+        if (!r.studentUid) {
+          needsUpdate = true;
+          return { ...r, studentUid: r.studentId };
+        }
+        return r;
+      });
+
+      if (needsUpdate) {
+        storage.saveAttendance(upgraded);
+      }
+      return upgraded;
     } catch (e) { return []; }
   },
   
@@ -64,7 +115,7 @@ export const storage = {
       classes: storage.getClasses(),
       attendance: storage.getAttendance(),
       exportDate: new Date().toISOString(),
-      version: "3.2"
+      version: "3.3"
     };
   },
   

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   ClipboardCheck, 
@@ -10,9 +10,12 @@ import {
   Menu,
   X,
   School,
-  Users
+  Users,
+  CalendarDays,
+  Briefcase
 } from 'lucide-react';
 import { View } from '../types';
+import { storage } from '../services/storage';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,14 +23,60 @@ interface LayoutProps {
   onViewChange: (view: View) => void;
 }
 
+interface Profile {
+  teacher: string;
+  schools: string[];
+}
+
 const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewChange }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+
+  useEffect(() => {
+    const refreshProfiles = () => {
+      const classes = storage.getClasses();
+      if (classes && classes.length > 0) {
+        // خريطة لتخزين الأستاذ مع مجموعة (Set) من المؤسسات لضمان عدم تكرار المدرسة للأستاذ الواحد
+        const teacherMap = new Map<string, { name: string, schools: Set<string> }>();
+        
+        const normalize = (text: string) => text.trim().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').toLowerCase();
+
+        classes.forEach(c => {
+          const teacherName = c.teacherName?.trim() || 'أستاذ غير مسجل';
+          const schoolName = c.schoolName?.trim() || 'مؤسسة غير معرفة';
+          
+          // تجاهل الأسماء التي تحتوي على نقاط فقط
+          if (teacherName.replace(/\./g, '').trim().length === 0) return;
+
+          const key = normalize(teacherName);
+          
+          if (!teacherMap.has(key)) {
+            teacherMap.set(key, { name: teacherName, schools: new Set([schoolName]) });
+          } else {
+            teacherMap.get(key)?.schools.add(schoolName);
+          }
+        });
+
+        const aggregatedProfiles: Profile[] = Array.from(teacherMap.values()).map(item => ({
+          teacher: item.name,
+          schools: Array.from(item.schools)
+        }));
+
+        setProfiles(aggregatedProfiles);
+      }
+    };
+
+    refreshProfiles();
+    window.addEventListener('storage', refreshProfiles);
+    return () => window.removeEventListener('storage', refreshProfiles);
+  }, [currentView]);
 
   const menuItems = [
     { id: 'dashboard', label: 'الرئيسية', icon: LayoutDashboard },
     { id: 'attendance', label: 'تسجيل الحضور', icon: ClipboardCheck },
     { id: 'students', label: 'إدارة التلاميذ', icon: Users },
     { id: 'classes', label: 'الأقسام والقوائم', icon: School },
+    { id: 'schedule', label: 'جدول التوقيت', icon: CalendarDays },
     { id: 'history', label: 'سجل الغيابات', icon: History },
     { id: 'reports', label: 'التقارير والإحصائيات', icon: FileBarChart },
     { id: 'settings', label: 'الإعدادات والنسخ', icon: Settings },
@@ -36,6 +85,13 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewChange }) 
   const handleNavClick = (view: View) => {
     onViewChange(view);
     setIsMobileMenuOpen(false);
+  };
+
+  const getInitials = (name: string) => {
+    if (!name || name.includes('..') || name.includes('غير مسجل')) return 'أ';
+    const parts = name.trim().split(' ').filter(p => p.length > 0);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return parts[0][0].toUpperCase();
   };
 
   return (
@@ -83,26 +139,52 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewChange }) 
           ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-100">
-          <div className="bg-slate-50 rounded-xl p-3 flex items-center gap-2 border border-slate-100">
-            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-xs font-bold">
-              إد
-            </div>
-            <div className="text-sm">
-              <p className="font-bold text-slate-800">إدارة المؤسسة</p>
-              <p className="text-slate-500 text-[10px]">نظام العمل المحلي النشط</p>
-            </div>
+        {/* Unique Teacher Profiles Card with All Schools */}
+        <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+          <div className="mb-3 flex items-center gap-2 px-1">
+            <Briefcase size={14} className="text-indigo-600" />
+            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">المستخدمون النشطون</h3>
+          </div>
+          
+          <div className="space-y-3 max-h-[250px] overflow-y-auto pr-1 custom-scrollbar">
+            {profiles.length > 0 ? (
+              profiles.map((prof, idx) => (
+                <div key={idx} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm group hover:border-indigo-400 transition-all">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-black group-hover:bg-indigo-600 group-hover:text-white transition-colors shrink-0 shadow-sm">
+                      {getInitials(prof.teacher)}
+                    </div>
+                    <div className="overflow-hidden">
+                      <p className="font-black text-slate-900 text-[12px] truncate leading-tight mb-2" title={prof.teacher}>
+                        {prof.teacher}
+                      </p>
+                      
+                      <div className="space-y-1.5">
+                        {prof.schools.map((school, sIdx) => (
+                          <div key={sIdx} className="flex items-center gap-1.5">
+                            <School size={10} className="text-slate-400 shrink-0" />
+                            <p className="font-bold text-slate-500 text-[9px] truncate" title={school}>
+                              {school}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-3 pt-2.5 border-t border-slate-50">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span className="text-[8px] font-black text-emerald-600 uppercase tracking-tighter">متصل وآمن</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-6 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">في انتظار البيانات</p>
+              </div>
+            )}
           </div>
         </div>
       </aside>
-
-      {/* Mobile Overlay */}
-      {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-slate-900/40 z-30 md:hidden backdrop-blur-sm" 
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden relative">
@@ -121,6 +203,12 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewChange }) 
           {children}
         </div>
       </main>
+      
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+      `}</style>
     </div>
   );
 };

@@ -6,6 +6,7 @@ import AttendanceMarking from './components/AttendanceMarking';
 import AttendanceHistory from './components/AttendanceHistory';
 import StudentManagement from './components/StudentManagement';
 import ClassManagement from './components/ClassManagement';
+import ScheduleManagement from './components/ScheduleManagement';
 import Settings from './components/Settings';
 import Reports from './components/Reports';
 import { View } from './types';
@@ -21,6 +22,8 @@ const App: React.FC = () => {
         return <AttendanceMarking />;
       case 'classes':
         return <ClassManagement />;
+      case 'schedule':
+        return <ScheduleManagement />;
       case 'history':
         return <AttendanceHistory />;
       case 'students':

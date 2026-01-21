@@ -1,38 +1,39 @@
 
 export type AttendanceStatus = 'present' | 'absent' | 'pe_kit' | 'justified';
 
-export interface ClassSchedule {
+export interface ClassSession {
+  day: string;
   startTime: string;
   endTime: string;
-  days: string[];
-}
-
-export interface Student {
-  id: string; 
-  name: string;
-  classId: string;
 }
 
 export interface Class {
   id: string;
   name: string;
   schoolName: string;
-  province?: string; // الحقل الجديد للولاية
+  province?: string;
   teacherName: string;
-  startTime: string;
-  endTime: string;
-  days: string[];
+  sessions: ClassSession[];
+}
+
+export interface Student {
+  uid: string;
+  id: string;
+  name: string;
+  classId: string;
+  isArchived?: boolean; // خاصية جديدة لتحديد إذا كان التلميذ محذوفاً من القسم ولكن موجود في النظام
 }
 
 export interface AttendanceRecord {
   id: string;
+  studentUid: string;
   studentId: string;
   classId: string;
   status: AttendanceStatus;
   date: string;
 }
 
-export type View = 'dashboard' | 'attendance' | 'students' | 'classes' | 'history' | 'reports' | 'settings';
+export type View = 'dashboard' | 'attendance' | 'students' | 'classes' | 'history' | 'reports' | 'settings' | 'schedule';
 
 export interface FullBackup {
   students: Student[];
@@ -65,3 +66,5 @@ export const WEEK_DAYS = [
   "الجمعة",
   "السبت"
 ];
+
+export const SECURITY_PIN = '0000';
