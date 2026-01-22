@@ -125,6 +125,138 @@
         position: relative;
         z-index: 10;
       }
+
+      /* Modern Weather Animations */
+      @keyframes weather-float {
+
+        0%,
+        100% {
+          transform: translateY(0) scale(1);
+        }
+
+        50% {
+          transform: translateY(-10px) scale(1.05);
+        }
+      }
+
+      @keyframes weather-pulse-glow {
+
+        0%,
+        100% {
+          filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.4));
+        }
+
+        50% {
+          filter: drop-shadow(0 0 25px rgba(251, 191, 36, 0.7));
+        }
+      }
+
+      @keyframes drift {
+        from {
+          transform: translateX(-10%);
+        }
+
+        to {
+          transform: translateX(110%);
+        }
+      }
+
+      @keyframes rain {
+        from {
+          transform: translateY(-20px) rotate(15deg);
+          opacity: 0;
+        }
+
+        to {
+          transform: translateY(120px) rotate(15deg);
+          opacity: 0.6;
+        }
+      }
+
+      @keyframes sun-ray {
+
+        0%,
+        100% {
+          transform: rotate(0deg) scale(1);
+          opacity: 0.4;
+        }
+
+        50% {
+          transform: rotate(180deg) scale(1.2);
+          opacity: 0.8;
+        }
+      }
+
+      @keyframes lightning-flash {
+
+        0%,
+        95%,
+        100% {
+          opacity: 0;
+        }
+
+        97% {
+          opacity: 1;
+          background: white;
+        }
+
+        98% {
+          opacity: 0;
+        }
+
+        99% {
+          opacity: 0.8;
+          background: #e0e7ff;
+        }
+      }
+
+      .animate-weather-float {
+        animation: weather-float 4s ease-in-out infinite;
+      }
+
+      .animate-weather-sun {
+        animation: weather-float 6s ease-in-out infinite, weather-pulse-glow 4s ease-in-out infinite;
+      }
+
+      .weather-rain-drop {
+        position: absolute;
+        width: 1px;
+        height: 15px;
+        background: linear-gradient(transparent, rgba(255, 255, 255, 0.8));
+        animation: rain 0.8s linear infinite;
+      }
+
+      .weather-cloud-drift {
+        position: absolute;
+        opacity: 0.3;
+        animation: drift 20s linear infinite;
+      }
+
+      .weather-sun-ray {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 200%;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        transform-origin: left center;
+        animation: sun-ray 10s linear infinite;
+      }
+
+      .weather-lightning {
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+        animation: lightning-flash 5s infinite;
+        pointer-events: none;
+      }
+
+      .glass-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
     }
   </style>
 
@@ -143,7 +275,7 @@
       }
     }
     </script>
-  <script type="module" crossorigin src="/assets/index-C9uJ76Gl.js"></script>
+  <script type="module" crossorigin src="/assets/index-DBloVUP4.js"></script>
 </head>
 
 <body>
